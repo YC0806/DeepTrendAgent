@@ -1,0 +1,4 @@
+# Install with: crontab -e  (as the dedicated deeptrend user)
+# The wrapper loads /etc/deeptrend/deeptrend.env and protects against overlap.
+CRON_TZ=Asia/Shanghai
+10 9 * * * /opt/deeptrend/app/bin/run-deeptrend >> /var/log/deeptrend/cron.log 2>&1
