@@ -1,4 +1,4 @@
-# DeepTrend 概要
+# {{ label_digest_title }}
 > {{ snapshot_date }} · {{ since }}/{{ language }}
 
 ## {{ section_title }}

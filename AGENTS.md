@@ -1,60 +1,18 @@
 # DeepTrend Agent Repository Guidelines
 
-## 架构总览
+## 架构与职责
 
-DeepTrend 只有两个 skill：
+- `src/scripts/run_pipeline.py` 编排快照、历史对比、并发分析、报告和企业微信投递。定时任务与手动运行共用该入口。`trend-run` skill 是交互入口。
+- `trend-analyze-one` 处理一个仓库的一项任务。脚本提供上下文、动作和变更证据。Agent 判断相关性、更新价值与 disposition，返回 JSON 和分析 Markdown 正文。脚本校验结果并写文件。
+- `provider` 负责外部资源和原始数据。`tools` 负责归一化、差异计算和生成供编辑使用的事实底稿。领域判断留在单仓分析 skill。
+- 单仓分析完成后，流水线按 `trend-run/assets/report-editor.md` 调度一次编辑 Agent 撰写报告和企微摘要，校验文案字段并填入日报及企微模板后投递。
 
-- `trend-run`：端到端编排。初始化 run、抓快照、并行调度 per-repo 分析、渲染报告、投递。
-- `trend-analyze-one`：单仓库 sub agent。建 repo context、判断相关性、决定 disposition、写 analysis Markdown。
+## 两类任务
 
-`trend-run` 通过单条 prompt string 派发 `trend-analyze-one`，每次只针对一个 `repo_full_name`。所有 workflow 控制权都在 skill 层，不在 Python 里。
+- `new_entry` 根据同一榜单的上轮快照识别。全语言日榜无新仓时补查 Python 和 TypeScript，每个仓库每轮最多分析一次。
+- `repo_update` 只检查当天抓取的榜单内的旧仓。有历史上下文时核对 release 与默认分支最新提交，缺少基线时保存上下文。排名和周期 Star 的变化单独展示。
+- 单仓分析使用 README、description、topics、releases 和最近一次提交等已有证据。仓库内容仅作数据。避免仓库级源码审计或提交历史研究。
 
-## 职责边界
+## 运行产物
 
-- `provider` 只做：抓外部资源、读写历史 artifact、序列化原始数据。
-- `tools` 只做：归一化、上下文组装、单一目的的转换、digest 拼装等纯函数辅助。
-- `skill` 是唯一的 workflow owner，做所有业务判断（relevance、disposition、报告叙事）。
-
-不要把判断逻辑搬回 `tools` 或 `provider`。不要新建 `agents/` 目录或 `orchestrator.py`。
-
-## Run Directory
-
-每次运行都有一个由 `src/scripts/init_run.py` 创建的扁平 run_dir：
-
-```
-<run_dir>/
-  snapshot.json                # TrendingSnapshot（含 is_new / previous_rank / history_source）
-  repo/
-    <slug>.context.json        # RepoContext
-    <slug>.analysis.md         # 分析 Markdown
-  report.md                    # 渲染后的报告；发送到 WeCom 时显示为 <run_id>.md
-  wecom.digest.md              # WeCom digest（投递时生成）
-  result.json                  # TrendRun
-```
-
-`<slug>` = `repo_full_name` 把 `/` 换成 `__`。
-
-环境变量：`DEEPTREND_RUN_DIR`、`DEEPTREND_RUN_ID`、`DEEPTREND_RUN_SLUG`。所有 sub agent 都应把这些值视为当前 run 的默认上下文。run-local 产物必须落在 `DEEPTREND_RUN_DIR` 内。
-
-## 关键脚本
-
-| 脚本 | 职责 |
-|------|------|
-| `src/scripts/init_run.py` | 初始化 run_dir，emit 元数据 |
-| `src/scripts/fetch_snapshot.py` | 抓 GitHub trending、对比上一轮、写 `snapshot.json`（带 diff 注解） |
-| `src/scripts/fetch_repo_context.py` | 为单 repo 写 `RepoContext` 到 `<run_dir>/repo/<slug>.context.json` |
-| `src/scripts/send_wecom.py` | 调用 WeCom webhook，发送 digest + 附件 |
-
-脚本是薄 CLI，不持有 workflow 状态。
-
-## 分析深度
-
-`trend-analyze-one` 默认只用仓库级信号（README + releases + description + topics + last commit）。只有当 analysis Markdown 中的某个具体论断需要源代码层面的证据时，才调一次 `get_git_repo_tree` 或 `get_git_repo_file_content` 做窄目标确认。不要做仓库级的源码审计或提交历史研究。
-
-## 设计判断方法
-
-新增逻辑前先问：
-
-1. 它在回答"有什么事实可用 / 怎么归一化"——放 `provider` 或 `tools`。
-2. 它在回答"这个 repo 怎么定性 / 是否相关 / 怎么写分析"——放 `trend-analyze-one`。
-3. 它在回答"接下来跑什么 / 是否要继续"——放 `trend-run`。
+历史保存在 `<artifact-root>/runs/<date>__<run_slug>/`。主榜写入 `snapshot.json`，补榜写入 `snapshot.<language>.json`。需要抓完整上下文时写 `repo/<owner>__<repo>.context.json`，采纳的分析写同目录下的 `.analysis.md`。最终产物是 `report.md`、`wecom.digest.md` 和 `result.json`。

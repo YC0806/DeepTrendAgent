@@ -241,6 +241,8 @@ def main() -> int:
             snapshot_name = f"snapshot.{language_slug}.json"
 
         current = _load_current_snapshot(args)
+        if not current.entries:
+            raise FetchError(f"current {args.language} chart has no entries")
         previous, history_source = _load_previous(args, run_dir, run_slug=run_slug, snapshot_name=snapshot_name)
         annotated = annotate_snapshot_diff(current, previous, history_source=history_source)
 

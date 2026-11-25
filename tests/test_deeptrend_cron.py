@@ -33,10 +33,13 @@ class CronGitHubAuthTests(unittest.TestCase):
             'exit "$TEST_GH_STATUS"',
         )
         self.write_command(
-            "opencode",
+            "python3",
+            '[[ "$*" == "-m src.scripts.run_pipeline --since daily --language all --output-language 简体中文" ]]\n'
             '[[ "$GITHUB_TOKEN" == "$TEST_GH_TOKEN" && -n "$GITHUB_TOKEN" ]]\n'
-            'echo "OpenCode started"',
+            'echo "pipeline started"',
         )
+
+        self.write_command("opencode", "exit 99")
 
     def write_command(self, name: str, body: str) -> None:
         path = self.root / name
@@ -67,7 +70,7 @@ class CronGitHubAuthTests(unittest.TestCase):
             with self.subTest(token=token):
                 result = self.run_cron(token=token)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, "OpenCode started\n")
+                self.assertEqual(result.stdout, "pipeline started\n")
                 self.assertEqual(result.stderr, "gh called\n")
 
     def test_token_lookup_failure_stops_before_opencode(self) -> None:

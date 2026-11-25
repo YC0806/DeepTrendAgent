@@ -276,6 +276,7 @@ class RepoContext(Serializable):
     tag_names: list[str] = field(default_factory=list)
     last_commit_hash: str | None = None
     last_commit_at: str | None = None
+    last_commit_message: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RepoContext":
@@ -294,6 +295,7 @@ class RepoContext(Serializable):
             tag_names=list(data.get("tag_names", [])),
             last_commit_hash=data.get("last_commit_hash"),
             last_commit_at=data.get("last_commit_at"),
+            last_commit_message=data.get("last_commit_message"),
         )
 
 
@@ -306,6 +308,9 @@ class RepoAnalysis(Serializable):
     why: str
     analysis_md: str | None = None
     error: str | None = None
+    action: str | None = None
+    chart: str | None = None
+    changes: dict[str, list[str | None]] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RepoAnalysis":
@@ -316,6 +321,9 @@ class RepoAnalysis(Serializable):
             summary=data["summary"],
             why=data["why"],
             analysis_md=data.get("analysis_md"),
+            action=data.get("action"),
+            chart=data.get("chart"),
+            changes=data.get("changes", {}),
             error=data.get("error"),
         )
 
@@ -326,6 +334,7 @@ class TrendReport(Serializable):
     summary: str
     markdown: str
     statistics: dict[str, int] = field(default_factory=dict)
+    generation: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TrendReport":
@@ -334,6 +343,7 @@ class TrendReport(Serializable):
             summary=data["summary"],
             markdown=data["markdown"],
             statistics=dict(data.get("statistics", {})),
+            generation=data.get("generation"),
         )
 
 

@@ -43,7 +43,7 @@ fi
 
 mkdir -- "$work_dir/app"
 tar -xzf "$archive" --strip-components=1 --no-same-owner -C "$work_dir/app"
-if [[ ! -x "$work_dir/app/bin/run-deeptrend" || ! -f "$work_dir/app/.opencode/skills/trend-run/SKILL.md" || ! -f "$work_dir/app/src/scripts/init_run.py" ]]; then
+if [[ ! -x "$work_dir/app/bin/run-deeptrend" || ! -f "$work_dir/app/.opencode/skills/trend-run/SKILL.md" || ! -f "$work_dir/app/src/scripts/run_pipeline.py" ]]; then
   echo "The package is missing the DeepTrend runner, skill, or scripts." >&2
   exit 1
 fi

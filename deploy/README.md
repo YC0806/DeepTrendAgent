@@ -1,6 +1,6 @@
 # 云服务器 Cron 部署
 
-本项目的定时入口是 `bin/run-deeptrend`。它通过 OpenCode 调用 `trend-run` skill，因此保留每个仓库的 LLM 判断、子 agent 分析、报告生成和企业微信投递。
+本项目的定时入口是 `bin/run-deeptrend`。它启动 Python 流水线，按新上榜和旧仓更新调度单仓 OpenCode 分析。
 
 ## 打包并部署
 
@@ -37,7 +37,7 @@ sudo -H -u deeptrend env -u GH_TOKEN -u GITHUB_TOKEN gh auth login --hostname gi
 sudo -H -u deeptrend env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com --active
 ```
 
-每次任务启动时，入口都从该用户的 `gh` 登录获取访问令牌。`gh` 在需要时自动续签，入口只把令牌传给本次 OpenCode 进程及其子进程。若取不到令牌，任务会在启动 OpenCode 前退出，并把错误写入 cron 日志。
+每次任务启动时，入口都从该用户的 `gh` 登录获取访问令牌。`gh` 在需要时自动续签，流水线使用令牌读取 GitHub API。若取不到令牌，任务会在启动 OpenCode 前退出，并把错误写入 cron 日志。
 
 先以该用户手动运行一次：
 
@@ -55,10 +55,9 @@ sudo -H -u deeptrend /opt/deeptrend/app/bin/run-deeptrend
 
 ## 安全与运维
 
-- `--auto` 是无人值守所必需的；请仅让专用用户拥有 app、数据目录与密钥文件的访问权。
 - `DEEPTREND_ARTIFACT_ROOT` 必须是持久化磁盘，历史快照依赖它进行 daily diff。
 - 轮换所有曾出现在历史日志或 Git 历史中的 GitHub token 与 WeCom webhook key；不要提交 `/etc/deeptrend/deeptrend.env`、`logs/` 或运行产物。
-- 通过 `/var/log/deeptrend/cron.log` 查看 OpenCode 的 JSON 事件和失败原因。
+- 通过 `/var/log/deeptrend/cron.log` 查看流水线统计、投递状态和失败原因。
 
 ## 后续 TODO
 

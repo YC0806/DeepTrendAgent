@@ -1,31 +1,31 @@
-# DeepTrend 趋势报告
+# {{ label_title }}
 
-周期：{{ since }} | 语言：{{ language }} | 来源：{{ source }}
-快照日期：{{ snapshot_date }}
+{{ label_period }}：{{ since }} | {{ label_language_label }}：{{ language }} | {{ label_source_label }}：{{ source }}
+{{ label_date_label }}：{{ snapshot_date }}
 
-## 执行摘要
+## {{ label_overview }}
 
 {{ summary }}
 
 {{ chart_changes_section }}
 
-## 新纳入跟踪仓库
+## {{ label_new }}
 
 {{ adopted_section }}
 
-## 持续跟踪仓库
+## {{ label_updated }}
 
 {{ tracked_section }}
 
-## 不相关或暂缓仓库
+## {{ label_skipped }}
 
 {{ skipped_section }}
 
-## 运行统计
+## {{ label_stats_title }}
 
-- 已筛选：{{ screened }}
-- 新纳入跟踪：{{ adopted }}
-- 持续跟踪：{{ tracked }}
-- 不相关或暂缓：{{ skipped }}
-- 主榜新上榜：{{ new_in_diff }}
+- {{ label_screened }}：{{ screened }}
+- {{ label_adopted }}：{{ adopted }}
+- {{ label_tracked }}：{{ tracked }}
+- {{ label_deferred }}：{{ skipped }}
+- {{ label_entries }}：{{ new_in_diff }}
 {{ supplemental_statistics }}

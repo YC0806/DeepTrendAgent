@@ -145,6 +145,7 @@ def build_github_repo_context(
         latest_release_published_at=latest_release.published_at if latest_release is not None else None,
         tag_names=[tag.name for tag in tag_items],
         last_commit_hash=last_commit.sha if last_commit is not None else None,
+        last_commit_message=last_commit.message if last_commit else None,
         last_commit_at=last_commit.committed_at if last_commit is not None else None,
     )
 

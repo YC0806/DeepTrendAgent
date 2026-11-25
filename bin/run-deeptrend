@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs one complete DeepTrend workflow through OpenCode. Designed for cron.
+# Runs one complete DeepTrend scripted workflow. Designed for cron.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,15 +48,6 @@ LANGUAGE="${DEEPTREND_LANGUAGE:-all}"
 OUTPUT_LANGUAGE="${DEEPTREND_OUTPUT_LANGUAGE:-简体中文}"
 case "$SINCE" in daily|weekly|monthly) ;; *) echo "Invalid DEEPTREND_SINCE: $SINCE" >&2; exit 1;; esac
 
-args=(run --dir "$APP_DIR" --format json --auto)
-if [[ -n "${OPENCODE_MODEL:-}" ]]; then
-  args+=(-m "$OPENCODE_MODEL")
-fi
-if [[ -n "${OPENCODE_AGENT:-}" ]]; then
-  args+=(--agent "$OPENCODE_AGENT")
-fi
-
-prompt="请使用 trend-run skill 跑一次完整的 DeepTrend workflow。since=${SINCE} language=${LANGUAGE} output_language=${OUTPUT_LANGUAGE}。跑完后返回 run_dir、report.md 路径、投递状态。"
 cd "$APP_DIR"
 
 if ! command -v gh >/dev/null 2>&1; then
@@ -73,4 +64,4 @@ if ! GITHUB_TOKEN="$(GH_PROMPT_DISABLED=1 gh auth token --hostname github.com --
 fi
 export GITHUB_TOKEN
 
-"$OPENCODE_BIN" "${args[@]}" "$prompt"
+exec python3 -m src.scripts.run_pipeline --since "$SINCE" --language "$LANGUAGE" --output-language "$OUTPUT_LANGUAGE"

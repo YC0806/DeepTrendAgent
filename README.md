@@ -1,30 +1,22 @@
 # DeepTrendAgent
 
-抓 GitHub trending → 对每个新仓库判断+分析 → 生成报告 → 推送到 WeCom。
-
-整个流程由两个 skill 完成：
-
-- `trend-run`：端到端编排。
-- `trend-analyze-one`：单仓库 sub agent，并行调度。
+DeepTrend 抓取 GitHub Trending，用脚本调度单仓 Agent，生成趋势报告并按配置推送企业微信。
 
 ## 跑一次
 
-```text
-请使用 trend-run skill 跑一次完整的 DeepTrend workflow。
-since=daily
-language=all
-output_language=简体中文
-跑完后返回 run_dir、report.md 路径、投递状态。
+```bash
+python3 -m src.scripts.run_pipeline --dry-run
 ```
 
-`trend-run` 会自动：
+默认抓全语言日榜，生成简体中文日报。去掉 `--dry-run` 后按 webhook 配置投递。可通过 `--since`、`--language`、`--output-language` 指定周期、榜单和输出语言。可用 `--artifact-root` 指定独立的预览目录。自然语言入口 `trend-run` 调用同一脚本。
 
-1. `python3 src/scripts/init_run.py` 初始化 run_dir
-2. `python3 src/scripts/fetch_snapshot.py` 抓快照并对比上一轮，写 `<run_dir>/snapshot.json`
-3. 并行分析新上榜仓库。全语言日榜无新上榜时，补查 Python 和 TypeScript 日榜，按仓库名去重后使用同一套筛选规则
-4. 渲染 `<run_dir>/report.md`。补榜仓库会标明来源，主榜无新上榜时还会展示在榜变化
-5. 如果 `WECOM_WEBHOOK_KEY` 已配置，调 `python3 src/scripts/send_wecom.py` 投递；附件显示名使用 `<run_id>.md`，例如 `2026-05-03__github-trending-daily-all.md`
-6. 写 `<run_dir>/result.json`
+## 执行流程
+
+1. 抓主榜并与上一份同范围快照比较。全语言日榜没有新上榜时补查 Python 和 TypeScript 日榜，按仓库名去重。
+2. **新仓库上榜**按榜单差异识别，包含重新上榜的项目。Agent 根据仓库证据判断是否值得收录。
+3. **旧仓库更新**只检查当天实际抓取的榜单。用同范围历史运行中最近一次有效仓库上下文比较 release 和默认分支最新提交。有变更才派给 Agent 判断是否值得报道。老仓缺少基线时记录上下文。排名和周期 Star 的变化另列在榜变化。
+4. 默认最多同时处理 4 个仓库，可用 `--workers` 或环境变量 `DEEPTREND_WORKERS` 调整。Agent 输出格式错误会重试一次。单仓失败会出现在日报并使进程返回非零。
+5. 编辑 Agent 根据单仓分析撰写执行摘要、各仓库解读和企微短评。脚本按照 [日报模板](.opencode/skills/trend-run/assets/report-template.md) 和 [企微摘要模板](.opencode/skills/trend-deliver-wecom/assets/digest-template.md) 填入文案、栏目、榜单来源和统计，超长的企微摘要按整条仓库短评裁剪。编辑失败时重试一次，仍失败则将单仓分析填入相同模板。可在 `result.json` 的 `report.generation` 查看本次使用了 `agent` 还是 `template`。脚本写结果并投递。附件显示名为 `<run_id>.md`。同一日期和榜单已有成功投递时复用结果，预览后的正式运行可直接投递已生成的报告。
 
 ## Run Directory 布局
 
@@ -63,23 +55,7 @@ output_language=简体中文
 | `DEEPTREND_GIT_CACHE_ROOT` | git provider 浅克隆缓存位置，默认 `<repo>/tmp/git-cache` |
 | `WECOM_WEBHOOK_KEY` | 企业微信 webhook key，留空跳过投递 |
 
-`DEEPTREND_RUN_DIR` / `DEEPTREND_RUN_ID` / `DEEPTREND_RUN_SLUG` 由 `init_run.py` 每次运行时输出，由 skill 在后续脚本调用间显式传递，**不要写进 `.env`**。
-
-## Disposition
-
-`trend-analyze-one` 给每个 repo 一个 disposition：
-
-- `adopt`：相关或邻近，应纳入跟踪
-- `tracked`：已经在跟踪列表（仅当外部传入 tracking state 时才用）
-- `skip`：无关或证据过弱
-
-`adopt` / `tracked` 进入"新纳入跟踪"/"持续跟踪"区段；`skip` 进入"不相关或暂缓"。
-
-## 单独分析一个仓库
-
-```text
-请使用 trend-analyze-one skill 分析 repo_full_name=<owner/repo>，run_dir=<dir>，output_language=简体中文。返回 RepoAnalysis handoff。
-```
+`DEEPTREND_RUN_DIR` / `DEEPTREND_RUN_ID` / `DEEPTREND_RUN_SLUG` 由 `init_run.py` 每次运行时输出，流水线通过参数传递运行目录，**不要写进 `.env`**。
 
 ## 测试
 
@@ -89,7 +65,7 @@ python3 -m pytest tests/
 
 ## 云服务器 Cron
 
-完整 workflow 依赖 OpenCode 执行 `trend-run` skill，不能只把 Python 脚本按顺序串起来。仓库提供了带文件锁、持久化 artifact 根目录和非交互 OpenCode 调用的入口：[`bin/run-deeptrend`](bin/run-deeptrend)。
+定时入口负责加锁、获取 GitHub 凭据并启动 Python 流水线。[`bin/run-deeptrend`](bin/run-deeptrend)。
 
 部署步骤、环境文件模板与 cron 示例见 [`deploy/README.md`](deploy/README.md)。
 
